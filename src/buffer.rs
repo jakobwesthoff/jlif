@@ -550,4 +550,94 @@ mod tests {
         assert_eq!(results4, vec![BufferResult::Json(expected)]);
         assert!(buffer.buffer.is_empty());
     }
+
+    #[test]
+    fn test_multiple_consecutive_overflows_mixed_json_types() {
+        let mut buffer = LineBuffer::new(3);
+
+        // Build up to first overflow
+        let results1 = buffer.add_line("{Kai Winn plots against Sisko}".to_string());
+        assert_eq!(
+            results1,
+            vec![BufferResult::Incomplete(vec![
+                "{Kai Winn plots against Sisko}".to_string()
+            ])]
+        );
+
+        let results2 = buffer.add_line(r#""Benjamin Sisko is the Emissary""#.to_string());
+        assert_eq!(
+            results2,
+            vec![BufferResult::Incomplete(vec![
+                "{Kai Winn plots against Sisko}".to_string(),
+                r#""Benjamin Sisko is the Emissary""#.to_string()
+            ])]
+        );
+
+        // First overflow occurs here - triggers draining cycle
+        let results3 = buffer.add_line("[Prophets communicate through orbs".to_string());
+        assert_eq!(
+            results3,
+            vec![
+                BufferResult::Text("{Kai Winn plots against Sisko}".to_string()),
+                BufferResult::Json(json!("Benjamin Sisko is the Emissary")),
+                BufferResult::Incomplete(vec!["[Prophets communicate through orbs".to_string()])
+            ]
+        );
+
+        // Add more content - still accumulating since no overflow
+        let results4 = buffer.add_line(r#"[1, 2, 3]"#.to_string());
+        assert_eq!(
+            results4,
+            vec![BufferResult::Incomplete(vec![
+                "[Prophets communicate through orbs".to_string(),
+                r#"[1, 2, 3]"#.to_string()
+            ])]
+        );
+
+        // Second overflow occurs - triggers another draining cycle
+        let results5 = buffer.add_line("Garak tailors clothes on the promenade".to_string());
+        assert_eq!(
+            results5,
+            vec![
+                BufferResult::Text("[Prophets communicate through orbs".to_string()),
+                BufferResult::Json(json!([1, 2, 3])),
+                BufferResult::Text("Garak tailors clothes on the promenade".to_string())
+            ]
+        );
+        assert!(buffer.buffer.is_empty());
+    }
+
+    #[test]
+    fn test_empty_buffer_during_draining_state() {
+        let mut buffer = LineBuffer::new(2);
+
+        // Build up to overflow with one JSON-like line and one valid JSON
+        let results1 = buffer.add_line("{invalid json syntax".to_string());
+        assert_eq!(
+            results1,
+            vec![BufferResult::Incomplete(vec![
+                "{invalid json syntax".to_string()
+            ])]
+        );
+
+        // Adding second line triggers immediate overflow since max_lines=2
+        // This processes the overflow and draining in the same call
+        let results2 = buffer.add_line(r#"{"valid": "json"}"#.to_string());
+        assert_eq!(
+            results2,
+            vec![
+                BufferResult::Text("{invalid json syntax".to_string()),
+                BufferResult::Json(json!({"valid": "json"}))
+            ]
+        );
+        assert!(buffer.buffer.is_empty());
+
+        // Verify that subsequent operations work correctly after buffer was emptied during draining
+        let results3 = buffer.add_line("Normal text after draining".to_string());
+        assert_eq!(
+            results3,
+            vec![BufferResult::Text("Normal text after draining".to_string())]
+        );
+        assert!(buffer.buffer.is_empty());
+    }
 }

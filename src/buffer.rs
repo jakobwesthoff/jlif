@@ -180,6 +180,32 @@ impl LineBuffer {
 
         None
     }
+
+    /// Drains all remaining buffer contents, extracting any valid JSON.
+    ///
+    /// This method should be called when input ends (EOF) to flush any remaining
+    /// buffered content. It follows the same logic as overflow draining but is
+    /// more aggressive - it doesn't wait for potential JSON completion and
+    /// flushes everything that can't be parsed as text.
+    pub fn drain(&mut self) -> Vec<BufferResult> {
+        let mut results = Vec::new();
+
+        // Keep processing until buffer is empty (like Draining state)
+        while !self.buffer.is_empty() {
+            if let Some((json_value, end_idx)) = self.try_parse_forward_segments() {
+                // Found valid JSON, extract it
+                results.push(BufferResult::Json(json_value));
+                for _ in 0..end_idx {
+                    self.buffer.remove(0);
+                }
+            } else {
+                // No valid JSON found, flush first line as text (don't wait)
+                results.push(BufferResult::Text(self.buffer.remove(0)));
+            }
+        }
+
+        results
+    }
 }
 
 #[cfg(test)]
@@ -638,6 +664,149 @@ mod tests {
             results3,
             vec![BufferResult::Text("Normal text after draining".to_string())]
         );
+        assert!(buffer.buffer.is_empty());
+    }
+
+    #[test]
+    fn test_drain_mixed_content_with_valid_json() {
+        let mut buffer = LineBuffer::new(10);
+
+        // Add content that includes both invalid and valid JSON
+        let results1 = buffer.add_line("{incomplete json".to_string());
+        assert_eq!(
+            results1,
+            vec![BufferResult::Incomplete(vec![
+                "{incomplete json".to_string()
+            ])]
+        );
+
+        let results2 = buffer.add_line(r#"{"valid": "json"}"#.to_string());
+        assert_eq!(
+            results2,
+            vec![BufferResult::Incomplete(vec![
+                "{incomplete json".to_string(),
+                r#"{"valid": "json"}"#.to_string()
+            ])]
+        );
+
+        let results3 = buffer.add_line("more text".to_string());
+        assert_eq!(
+            results3,
+            vec![BufferResult::Incomplete(vec![
+                "{incomplete json".to_string(),
+                r#"{"valid": "json"}"#.to_string(),
+                "more text".to_string()
+            ])]
+        );
+
+        // Drain should extract valid JSON and flush the rest as text
+        let drain_results = buffer.drain();
+        assert_eq!(
+            drain_results,
+            vec![
+                BufferResult::Text("{incomplete json".to_string()),
+                BufferResult::Json(json!({"valid": "json"})),
+                BufferResult::Text("more text".to_string())
+            ]
+        );
+        assert!(buffer.buffer.is_empty());
+    }
+
+    #[test]
+    fn test_drain_only_invalid_content() {
+        let mut buffer = LineBuffer::new(10);
+
+        // Add only invalid JSON content
+        let results1 = buffer.add_line("{invalid".to_string());
+        assert_eq!(
+            results1,
+            vec![BufferResult::Incomplete(vec!["{invalid".to_string()])]
+        );
+
+        let results2 = buffer.add_line("[also invalid".to_string());
+        assert_eq!(
+            results2,
+            vec![BufferResult::Incomplete(vec![
+                "{invalid".to_string(),
+                "[also invalid".to_string()
+            ])]
+        );
+
+        // Drain should flush everything as text
+        let drain_results = buffer.drain();
+        assert_eq!(
+            drain_results,
+            vec![
+                BufferResult::Text("{invalid".to_string()),
+                BufferResult::Text("[also invalid".to_string())
+            ]
+        );
+        assert!(buffer.buffer.is_empty());
+    }
+
+    #[test]
+    fn test_drain_valid_multiline_json() {
+        let mut buffer = LineBuffer::new(10);
+
+        // Add JSON-like line first to prevent immediate parsing
+        let results0 = buffer.add_line("{Worf's honor code".to_string());
+        assert_eq!(
+            results0,
+            vec![BufferResult::Incomplete(vec![
+                "{Worf's honor code".to_string()
+            ])]
+        );
+
+        // Add multi-line JSON that would be valid on its own
+        let results1 = buffer.add_line("{".to_string());
+        assert_eq!(
+            results1,
+            vec![BufferResult::Incomplete(vec![
+                "{Worf's honor code".to_string(),
+                "{".to_string()
+            ])]
+        );
+
+        let results2 = buffer.add_line(r#"  "captain": "Sisko""#.to_string());
+        assert_eq!(
+            results2,
+            vec![BufferResult::Incomplete(vec![
+                "{Worf's honor code".to_string(),
+                "{".to_string(),
+                r#"  "captain": "Sisko""#.to_string()
+            ])]
+        );
+
+        let results3 = buffer.add_line("}".to_string());
+        assert_eq!(
+            results3,
+            vec![BufferResult::Incomplete(vec![
+                "{Worf's honor code".to_string(),
+                "{".to_string(),
+                r#"  "captain": "Sisko""#.to_string(),
+                "}".to_string()
+            ])]
+        );
+
+        // Drain should extract the JSON-like text first, then the valid JSON
+        let drain_results = buffer.drain();
+        assert_eq!(
+            drain_results,
+            vec![
+                BufferResult::Text("{Worf's honor code".to_string()),
+                BufferResult::Json(json!({"captain": "Sisko"}))
+            ]
+        );
+        assert!(buffer.buffer.is_empty());
+    }
+
+    #[test]
+    fn test_drain_empty_buffer() {
+        let mut buffer = LineBuffer::new(10);
+
+        // Drain on empty buffer should return empty results
+        let drain_results = buffer.drain();
+        assert_eq!(drain_results, vec![]);
         assert!(buffer.buffer.is_empty());
     }
 }

@@ -1,5 +1,6 @@
 mod buffer;
 mod cli;
+mod processor;
 
 use clap::Parser;
 use cli::JlifArgs;

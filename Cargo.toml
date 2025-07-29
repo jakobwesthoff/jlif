@@ -17,3 +17,7 @@ lto = true        # Enables link-time-optimizations.
 opt-level = 3     # "s" prioritizes small binary size. Use `3` if you prefer speed.
 panic = "abort"   # Higher performance by disabling panic handlers.
 strip = true      # Ensures debug symbols are removed.
+
+[dev-dependencies]
+assert_cmd = "2.0.17"
+predicates = "3.1.3"

@@ -1,3 +1,4 @@
+mod buffer;
 mod cli;
 
 use clap::Parser;

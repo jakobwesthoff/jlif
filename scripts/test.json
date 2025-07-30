@@ -1,0 +1,141 @@
+# Test data for jlif - JSON Line Formatter
+# This file contains various scenarios to test JSON parsing and formatting
+
+Regular log entry from application startup
+{"timestamp": "2024-01-15T10:30:00Z", "level": "INFO", "message": "Application started"}
+Another plain text log line
+{"timestamp": "2024-01-15T10:30:01Z", "level": "DEBUG", "component": "database", "action": "connection_established"}
+
+# Test single-line JSON objects with various data types
+{"string_value": "Deep Space Nine", "number": 47, "boolean": true, "null_value": null}
+["Sisko", "Kira", "Dax", "Worf", "Bashir", "O'Brien", "Odo"]
+"Just a simple JSON string"
+42
+-2375
+3.14159
+true
+false
+null
+
+Error: Connection timeout after 30 seconds
+{
+  "error": {
+    "code": 500,
+    "message": "Internal server error",
+    "details": {
+      "component": "authentication",
+      "retry_after": 300
+    }
+  }
+}
+
+Processing user request...
+{
+  "user": {
+    "id": 12345,
+    "name": "Benjamin Sisko",
+    "roles": ["captain", "emissary"],
+    "station": "Deep Space Nine"
+  },
+  "request": {
+    "action": "access_ops",
+    "timestamp": "2024-01-15T10:31:00Z"
+  }
+}
+
+# Test JSON-like text that isn't valid JSON
+{This looks like JSON but isn't valid
+[Incomplete array without proper closing
+"Unterminated string value
+{Garak's mysterious background}
+[Odo's investigation notes, incomplete
+
+Warning: High CPU usage detected
+{"metrics": {"cpu_percent": 85.2, "memory_gb": 4.1, "disk_io": "high"}}
+
+# Test multi-line arrays
+[
+  {
+    "name": "Quark",
+    "species": "Ferengi",
+    "occupation": "Bar owner"
+  },
+  {
+    "name": "Rom",
+    "species": "Ferengi", 
+    "occupation": "Engineer"
+  },
+  {
+    "name": "Nog",
+    "species": "Ferengi",
+    "occupation": "Starfleet officer"
+  }
+]
+
+System health check completed
+{
+  "services": {
+    "database": {
+      "status": "healthy",
+      "response_time_ms": 23,
+      "connections": 15
+    },
+    "cache": {
+      "status": "healthy",
+      "hit_ratio": 0.94,
+      "size_mb": 256
+    },
+    "message_queue": {
+      "status": "degraded",
+      "pending_messages": 1247,
+      "error_rate": 0.02
+    }
+  },
+  "overall_status": "warning"
+}
+
+# Test edge cases with mixed valid/invalid content
+{Invalid JSON followed by valid
+{"valid_object": "this should be extracted", "number": 123}
+More plain text
+{Another invalid JSON structure
+{"another_valid": "object", "with": ["nested", "array"]}
+
+Kardassian patrol ship detected
+{"sensor_data": {"distance_km": 50000, "heading": 127, "speed_warp": 6.2}}
+
+# Test very nested JSON structure
+{
+  "station": {
+    "name": "Deep Space Nine",
+    "location": "Bajoran system",
+    "crew": {
+      "command": ["Sisko", "Kira"],
+      "operations": ["Dax", "O'Brien"],
+      "security": ["Odo", "Worf"],
+      "medical": ["Bashir"]
+    },
+    "facilities": {
+      "docking_bays": 12,
+      "quarters": 300,
+      "holosuites": 6,
+      "replicators": 150
+    }
+  }
+}
+
+Dominion war update
+{Temporal anomaly detected near the wormhole
+[Prophets communication attempt logged
+"Emergency protocols activated"
+
+# Test arrays with different data types  
+[1, "two", 3.0, true, null, {"nested": "object"}]
+
+Final system status: All operations normal
+{"final_report": {"uptime_hours": 24, "errors": 0, "warnings": 3, "info_messages": 847}}
+
+# Some final invalid JSON to test EOF handling
+{Incomplete object at end of file
+[Unclosed array
+"Unterminated string at EOF

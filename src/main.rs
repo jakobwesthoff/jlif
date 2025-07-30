@@ -3,6 +3,10 @@ mod cli;
 mod processor;
 
 use anyhow::Result;
+use mimalloc::MiMalloc;
+
+#[global_allocator]
+static GLOBAL: MiMalloc = MiMalloc;
 use buffer::LineBuffer;
 use clap::Parser;
 use cli::JlifArgs;

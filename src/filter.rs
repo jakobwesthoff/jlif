@@ -79,6 +79,33 @@ impl Filter for NoFilter {
     }
 }
 
+/// Filter that only passes JSON content, applying an inner filter to JSON matches
+#[derive(Debug)]
+pub struct JsonOnlyFilter {
+    inner_filter: Box<OutputFilter>,
+}
+
+impl JsonOnlyFilter {
+    pub fn new(inner_filter: OutputFilter) -> Self {
+        Self {
+            inner_filter: Box::new(inner_filter),
+        }
+    }
+}
+
+impl Filter for JsonOnlyFilter {
+    fn matches(&self, input: &FilterInput) -> bool {
+        match input {
+            FilterInput::Json(_) => self.inner_filter.matches(input),
+            _ => false, // Suppress all non-JSON content (future-proof)
+        }
+    }
+
+    fn is_active(&self) -> bool {
+        true
+    }
+}
+
 /// Regex-based filter with case sensitivity control
 ///
 /// Converts both JSON and Text inputs to strings for regex matching.
@@ -128,6 +155,7 @@ impl Filter for RegexFilter {
 pub enum OutputFilter {
     None(NoFilter),
     Regex(RegexFilter),
+    JsonOnly(JsonOnlyFilter),
 }
 
 impl OutputFilter {
@@ -136,6 +164,7 @@ impl OutputFilter {
     /// # Arguments
     /// * `pattern` - Optional regex pattern string. If None, returns NoFilter
     /// * `case_sensitive` - Whether the regex should be case sensitive
+    /// * `json_only` - Whether to suppress all non-JSON output
     ///
     /// # Returns
     /// * `Ok(OutputFilter)` - Successfully created filter
@@ -143,13 +172,20 @@ impl OutputFilter {
     pub fn from_args(
         pattern: Option<String>,
         case_sensitive: bool,
+        json_only: bool,
     ) -> Result<Self, FormatterError> {
-        match pattern {
+        let base_filter = match pattern {
             Some(pattern_str) => {
                 let regex_filter = RegexFilter::new(pattern_str, case_sensitive)?;
-                Ok(OutputFilter::Regex(regex_filter))
+                OutputFilter::Regex(regex_filter)
             }
-            None => Ok(OutputFilter::None(NoFilter)),
+            None => OutputFilter::None(NoFilter),
+        };
+
+        if json_only {
+            Ok(OutputFilter::JsonOnly(JsonOnlyFilter::new(base_filter)))
+        } else {
+            Ok(base_filter)
         }
     }
 }
@@ -269,17 +305,17 @@ mod tests {
     #[test]
     fn test_from_args_creates_correct_filter() {
         // No pattern creates NoFilter
-        let no_filter = OutputFilter::from_args(None, false).unwrap();
+        let no_filter = OutputFilter::from_args(None, false, false).unwrap();
         assert!(!no_filter.is_active());
 
         // Pattern creates RegexFilter
-        let regex_filter = OutputFilter::from_args(Some("test".to_string()), true).unwrap();
+        let regex_filter = OutputFilter::from_args(Some("test".to_string()), true, false).unwrap();
         assert!(regex_filter.is_active());
     }
 
     #[test]
     fn test_from_args_invalid_regex() {
-        let result = OutputFilter::from_args(Some("[".to_string()), false);
+        let result = OutputFilter::from_args(Some("[".to_string()), false, false);
         assert!(result.is_err());
 
         let error = result.unwrap_err();
@@ -288,5 +324,56 @@ mod tests {
                 assert_eq!(pattern, "[");
             }
         }
+    }
+
+    #[test]
+    fn test_json_only_filter_standalone() {
+        let filter = OutputFilter::from_args(None, false, true).unwrap();
+
+        let json_value = json!({"test": "data"});
+        let json_input = FilterInput::Json(&json_value);
+        let text_input = FilterInput::Text("plain text");
+
+        assert!(filter.matches(&json_input));
+        assert!(!filter.matches(&text_input));
+        assert!(filter.is_active());
+    }
+
+    #[test]
+    fn test_json_only_filter_with_regex() {
+        let filter = OutputFilter::from_args(Some("error".to_string()), false, true).unwrap();
+
+        let json_match_value = json!({"status": "error"});
+        let json_no_match_value = json!({"status": "ok"});
+        let json_match = FilterInput::Json(&json_match_value);
+        let json_no_match = FilterInput::Json(&json_no_match_value);
+        let text_match = FilterInput::Text("error occurred");
+
+        // JSON that matches regex should pass
+        assert!(filter.matches(&json_match));
+        // JSON that doesn't match regex should not pass
+        assert!(!filter.matches(&json_no_match));
+        // Text should never pass, even if it matches regex
+        assert!(!filter.matches(&text_match));
+        assert!(filter.is_active());
+    }
+
+    #[test]
+    fn test_from_args_combinations() {
+        // No filter, no json-only
+        let filter1 = OutputFilter::from_args(None, false, false).unwrap();
+        assert!(!filter1.is_active());
+
+        // Regex filter, no json-only
+        let filter2 = OutputFilter::from_args(Some("test".to_string()), true, false).unwrap();
+        assert!(filter2.is_active());
+
+        // No filter, json-only
+        let filter3 = OutputFilter::from_args(None, false, true).unwrap();
+        assert!(filter3.is_active());
+
+        // Regex filter + json-only
+        let filter4 = OutputFilter::from_args(Some("test".to_string()), true, true).unwrap();
+        assert!(filter4.is_active());
     }
 }

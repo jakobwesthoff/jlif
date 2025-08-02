@@ -19,7 +19,7 @@ fn main() -> Result<()> {
     let args = JlifArgs::parse();
 
     // Create filter from CLI arguments
-    let filter = OutputFilter::from_args(args.filter, args.case_sensitive)
+    let filter = OutputFilter::from_args(args.filter, args.case_sensitive, args.json_only)
         .map_err(|e| anyhow::anyhow!("Filter error: {}", e))?;
 
     // Create LineBuffer with user-specified max_lines

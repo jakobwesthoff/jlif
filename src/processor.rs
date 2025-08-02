@@ -225,7 +225,7 @@ ERROR: critical system failure"#;
 
         let mut output = Vec::new();
         let buffer = LineBuffer::new(10);
-        let filter = OutputFilter::from_args(Some("error".to_string()), false).unwrap();
+        let filter = OutputFilter::from_args(Some("error".to_string()), false, false).unwrap();
         let mut processor = StreamProcessor::new(Cursor::new(input), &mut output, buffer, filter);
 
         processor.process().unwrap();
@@ -252,7 +252,7 @@ info: no match"#;
 
         let mut output = Vec::new();
         let buffer = LineBuffer::new(10);
-        let filter = OutputFilter::from_args(Some("ERROR".to_string()), true).unwrap();
+        let filter = OutputFilter::from_args(Some("ERROR".to_string()), true, false).unwrap();
         let mut processor = StreamProcessor::new(Cursor::new(input), &mut output, buffer, filter);
 
         processor.process().unwrap();
@@ -275,7 +275,8 @@ Plain text with status error"#;
         let buffer = LineBuffer::new(10);
         // Filter for JSON objects with status: error pattern
         let filter =
-            OutputFilter::from_args(Some(r#""status"\s*:\s*"error""#.to_string()), false).unwrap();
+            OutputFilter::from_args(Some(r#""status"\s*:\s*"error""#.to_string()), false, false)
+                .unwrap();
         let mut processor = StreamProcessor::new(Cursor::new(input), &mut output, buffer, filter);
 
         processor.process().unwrap();

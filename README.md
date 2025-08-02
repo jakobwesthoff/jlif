@@ -8,7 +8,7 @@ jlif processes continuous text streams from standard input, intelligently detect
 
 ## Installation
 
-TODO: Installation instructions
+Pre-built binaries for macOS, Linux, and Windows are available in the [GitHub Releases](https://github.com/jakobwesthoff/jlif/releases) section.
 
 ## Usage
 

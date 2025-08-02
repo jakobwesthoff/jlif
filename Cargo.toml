@@ -10,6 +10,7 @@ colored_json = "5.0.0"
 enum_dispatch = "0.3.13"
 mimalloc = "0.1.47"
 regex = "1.11.1"
+serde = "1.0.219"
 serde_json = { version = "1.0.141", features = ["preserve_order"] }
 thiserror = "2.0.12"
 

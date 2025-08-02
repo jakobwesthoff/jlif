@@ -1,5 +1,6 @@
 use crate::buffer::{BufferResult, LineBuffer};
 use crate::filter::{Filter, FilterInput, OutputFilter};
+use crate::formatter::{Formatter, JsonFormatter};
 use anyhow::Result;
 use std::io::{BufRead, BufReader, Read, Write};
 
@@ -8,7 +9,7 @@ pub struct StreamProcessor<R: Read, W: Write> {
     writer: W,
     buffer: LineBuffer,
     filter: OutputFilter,
-    compact: bool,
+    json_formatter: JsonFormatter,
 }
 
 impl<R: Read, W: Write> StreamProcessor<R, W> {
@@ -17,14 +18,14 @@ impl<R: Read, W: Write> StreamProcessor<R, W> {
         writer: W,
         buffer: LineBuffer,
         filter: OutputFilter,
-        compact: bool,
+        json_formatter: JsonFormatter,
     ) -> Self {
         Self {
             reader: BufReader::new(reader),
             writer,
             buffer,
             filter,
-            compact,
+            json_formatter,
         }
     }
 
@@ -65,12 +66,8 @@ impl<R: Read, W: Write> StreamProcessor<R, W> {
                 if self.filter.matches(&filter_input) {
                     match result {
                         BufferResult::Json(json_value) => {
-                            // Output JSON in compact or pretty-printed format
-                            let json_string = if self.compact {
-                                serde_json::to_string(&json_value)?
-                            } else {
-                                serde_json::to_string_pretty(&json_value)?
-                            };
+                            // Output JSON using the configured formatter
+                            let json_string = self.json_formatter.format_json(&json_value)?;
                             writeln!(self.writer, "{}", json_string)?;
                         }
                         BufferResult::Text(text) => {
@@ -110,8 +107,9 @@ Final text line"#;
         let mut output = Vec::new();
         let buffer = LineBuffer::new(10);
         let filter = OutputFilter::None(NoFilter);
+        let formatter = JsonFormatter::from_args(true, true); // compact, no_color
         let mut processor =
-            StreamProcessor::new(Cursor::new(input), &mut output, buffer, filter, true);
+            StreamProcessor::new(Cursor::new(input), &mut output, buffer, filter, formatter);
 
         processor.process().unwrap();
 
@@ -139,8 +137,9 @@ Final text line"#;
         let mut output = Vec::new();
         let buffer = LineBuffer::new(10);
         let filter = OutputFilter::None(NoFilter);
+        let formatter = JsonFormatter::from_args(true, true); // compact, no_color
         let mut processor =
-            StreamProcessor::new(Cursor::new(input), &mut output, buffer, filter, true);
+            StreamProcessor::new(Cursor::new(input), &mut output, buffer, filter, formatter);
 
         processor.process().unwrap();
 
@@ -167,8 +166,9 @@ Final text line"#;
         let mut output = Vec::new();
         let buffer = LineBuffer::new(10);
         let filter = OutputFilter::None(NoFilter);
+        let formatter = JsonFormatter::from_args(true, true); // compact, no_color
         let mut processor =
-            StreamProcessor::new(Cursor::new(input), &mut output, buffer, filter, true);
+            StreamProcessor::new(Cursor::new(input), &mut output, buffer, filter, formatter);
 
         processor.process().unwrap();
 
@@ -193,8 +193,9 @@ Final text line"#;
         let mut output = Vec::new();
         let buffer = LineBuffer::new(10);
         let filter = OutputFilter::None(NoFilter);
+        let formatter = JsonFormatter::from_args(true, true); // compact, no_color
         let mut processor =
-            StreamProcessor::new(Cursor::new(input), &mut output, buffer, filter, true);
+            StreamProcessor::new(Cursor::new(input), &mut output, buffer, filter, formatter);
 
         processor.process().unwrap();
 
@@ -213,8 +214,9 @@ final text"#;
         let mut output = Vec::new();
         let buffer = LineBuffer::new(3); // Small buffer to trigger overflow
         let filter = OutputFilter::None(NoFilter);
+        let formatter = JsonFormatter::from_args(true, true); // compact, no_color
         let mut processor =
-            StreamProcessor::new(Cursor::new(input), &mut output, buffer, filter, true);
+            StreamProcessor::new(Cursor::new(input), &mut output, buffer, filter, formatter);
 
         processor.process().unwrap();
 
@@ -244,8 +246,9 @@ ERROR: critical system failure"#;
         let mut output = Vec::new();
         let buffer = LineBuffer::new(10);
         let filter = OutputFilter::from_args(Some("error".to_string()), false, false).unwrap();
+        let formatter = JsonFormatter::from_args(true, true); // compact, no_color
         let mut processor =
-            StreamProcessor::new(Cursor::new(input), &mut output, buffer, filter, true);
+            StreamProcessor::new(Cursor::new(input), &mut output, buffer, filter, formatter);
 
         processor.process().unwrap();
 
@@ -272,8 +275,9 @@ info: no match"#;
         let mut output = Vec::new();
         let buffer = LineBuffer::new(10);
         let filter = OutputFilter::from_args(Some("ERROR".to_string()), true, false).unwrap();
+        let formatter = JsonFormatter::from_args(true, true); // compact, no_color
         let mut processor =
-            StreamProcessor::new(Cursor::new(input), &mut output, buffer, filter, true);
+            StreamProcessor::new(Cursor::new(input), &mut output, buffer, filter, formatter);
 
         processor.process().unwrap();
 
@@ -297,8 +301,9 @@ Plain text with status error"#;
         let filter =
             OutputFilter::from_args(Some(r#""status"\s*:\s*"error""#.to_string()), false, false)
                 .unwrap();
+        let formatter = JsonFormatter::from_args(true, true); // compact, no_color
         let mut processor =
-            StreamProcessor::new(Cursor::new(input), &mut output, buffer, filter, true);
+            StreamProcessor::new(Cursor::new(input), &mut output, buffer, filter, formatter);
 
         processor.process().unwrap();
 
@@ -318,8 +323,9 @@ Text line
         let mut output = Vec::new();
         let buffer = LineBuffer::new(10);
         let filter = OutputFilter::None(NoFilter);
+        let formatter = JsonFormatter::from_args(false, true); // pretty, no_color
         let mut processor =
-            StreamProcessor::new(Cursor::new(input), &mut output, buffer, filter, false);
+            StreamProcessor::new(Cursor::new(input), &mut output, buffer, filter, formatter);
 
         processor.process().unwrap();
 

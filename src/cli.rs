@@ -13,7 +13,7 @@ pub struct JlifArgs {
     pub filter: Option<String>,
 
     /// Enable case-sensitive filtering
-    #[arg(short, long)]
+    #[arg(short = 's', long)]
     pub case_sensitive: bool,
 
     /// Show only JSON content, suppress non-JSON pass-through
@@ -23,6 +23,10 @@ pub struct JlifArgs {
     /// Output JSON in compact format instead of pretty-printed
     #[arg(short, long)]
     pub compact: bool,
+
+    /// Disable colored output
+    #[arg(long)]
+    pub no_color: bool,
 }
 
 #[cfg(test)]

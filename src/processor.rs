@@ -1,4 +1,5 @@
 use crate::buffer::{BufferResult, LineBuffer};
+use crate::filter::{Filter, FilterInput, OutputFilter};
 use anyhow::Result;
 use std::io::{BufRead, BufReader, Read, Write};
 
@@ -6,14 +7,16 @@ pub struct StreamProcessor<R: Read, W: Write> {
     reader: BufReader<R>,
     writer: W,
     buffer: LineBuffer,
+    filter: OutputFilter,
 }
 
 impl<R: Read, W: Write> StreamProcessor<R, W> {
-    pub fn new(reader: R, writer: W, buffer: LineBuffer) -> Self {
+    pub fn new(reader: R, writer: W, buffer: LineBuffer, filter: OutputFilter) -> Self {
         Self {
             reader: BufReader::new(reader),
             writer,
             buffer,
+            filter,
         }
     }
 
@@ -47,19 +50,29 @@ impl<R: Read, W: Write> StreamProcessor<R, W> {
 
     fn handle_results(&mut self, results: Vec<BufferResult>) -> Result<()> {
         for result in results {
-            match result {
-                BufferResult::Json(json_value) => {
-                    // Output JSON as compact single-line string
-                    writeln!(self.writer, "{}", serde_json::to_string(&json_value)?)?;
+            // Try to convert BufferResult to FilterInput
+            // Incomplete results are automatically filtered out by the conversion
+            if let Ok(filter_input) = FilterInput::try_from(&result) {
+                // Apply filter to determine if content should be output
+                if self.filter.matches(&filter_input) {
+                    match result {
+                        BufferResult::Json(json_value) => {
+                            // Output JSON as compact single-line string
+                            writeln!(self.writer, "{}", serde_json::to_string(&json_value)?)?;
+                        }
+                        BufferResult::Text(text) => {
+                            // Output text as-is
+                            writeln!(self.writer, "{}", text)?;
+                        }
+                        BufferResult::Incomplete(_) => {
+                            // This should never happen due to FilterInput::try_from filtering,
+                            // but we handle it defensively
+                        }
+                    }
                 }
-                BufferResult::Text(text) => {
-                    // Output text as-is
-                    writeln!(self.writer, "{}", text)?;
-                }
-                BufferResult::Incomplete(_) => {
-                    // Ignore incomplete results - they're still being processed
-                }
+                // If filter doesn't match, content is suppressed (no output)
             }
+            // If conversion fails (Incomplete), content is not output
         }
         Ok(())
     }
@@ -68,6 +81,7 @@ impl<R: Read, W: Write> StreamProcessor<R, W> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::filter::{NoFilter, OutputFilter};
     use std::io::Cursor;
 
     #[test]
@@ -82,7 +96,8 @@ Final text line"#;
 
         let mut output = Vec::new();
         let buffer = LineBuffer::new(10);
-        let mut processor = StreamProcessor::new(Cursor::new(input), &mut output, buffer);
+        let filter = OutputFilter::None(NoFilter);
+        let mut processor = StreamProcessor::new(Cursor::new(input), &mut output, buffer, filter);
 
         processor.process().unwrap();
 
@@ -109,7 +124,8 @@ Final text line"#;
 
         let mut output = Vec::new();
         let buffer = LineBuffer::new(10);
-        let mut processor = StreamProcessor::new(Cursor::new(input), &mut output, buffer);
+        let filter = OutputFilter::None(NoFilter);
+        let mut processor = StreamProcessor::new(Cursor::new(input), &mut output, buffer, filter);
 
         processor.process().unwrap();
 
@@ -135,7 +151,8 @@ Final text line"#;
 
         let mut output = Vec::new();
         let buffer = LineBuffer::new(10);
-        let mut processor = StreamProcessor::new(Cursor::new(input), &mut output, buffer);
+        let filter = OutputFilter::None(NoFilter);
+        let mut processor = StreamProcessor::new(Cursor::new(input), &mut output, buffer, filter);
 
         processor.process().unwrap();
 
@@ -159,7 +176,8 @@ Final text line"#;
 
         let mut output = Vec::new();
         let buffer = LineBuffer::new(10);
-        let mut processor = StreamProcessor::new(Cursor::new(input), &mut output, buffer);
+        let filter = OutputFilter::None(NoFilter);
+        let mut processor = StreamProcessor::new(Cursor::new(input), &mut output, buffer, filter);
 
         processor.process().unwrap();
 
@@ -177,7 +195,8 @@ final text"#;
 
         let mut output = Vec::new();
         let buffer = LineBuffer::new(3); // Small buffer to trigger overflow
-        let mut processor = StreamProcessor::new(Cursor::new(input), &mut output, buffer);
+        let filter = OutputFilter::None(NoFilter);
+        let mut processor = StreamProcessor::new(Cursor::new(input), &mut output, buffer, filter);
 
         processor.process().unwrap();
 
@@ -194,5 +213,77 @@ final text"#;
                 "final text"
             ]
         );
+    }
+
+    #[test]
+    fn test_process_with_regex_filter() {
+        let input = r#"Regular text line
+{"status": "error", "message": "failed"}
+Info: everything ok
+{"status": "ok", "message": "success"}
+ERROR: critical system failure"#;
+
+        let mut output = Vec::new();
+        let buffer = LineBuffer::new(10);
+        let filter = OutputFilter::from_args(Some("error".to_string()), false).unwrap();
+        let mut processor = StreamProcessor::new(Cursor::new(input), &mut output, buffer, filter);
+
+        processor.process().unwrap();
+
+        let output_str = String::from_utf8(output).unwrap();
+        let lines: Vec<&str> = output_str.trim().split('\n').collect();
+
+        // Should only output lines containing "error" (case-insensitive)
+        assert_eq!(
+            lines,
+            vec![
+                r#"{"status":"error","message":"failed"}"#,
+                "ERROR: critical system failure"
+            ]
+        );
+    }
+
+    #[test]
+    fn test_process_with_case_sensitive_filter() {
+        let input = r#"error: lowercase
+ERROR: uppercase
+Error: mixed case
+info: no match"#;
+
+        let mut output = Vec::new();
+        let buffer = LineBuffer::new(10);
+        let filter = OutputFilter::from_args(Some("ERROR".to_string()), true).unwrap();
+        let mut processor = StreamProcessor::new(Cursor::new(input), &mut output, buffer, filter);
+
+        processor.process().unwrap();
+
+        let output_str = String::from_utf8(output).unwrap();
+        let lines: Vec<&str> = output_str.trim().split('\n').collect();
+
+        // Should only output lines with exact case match
+        assert_eq!(lines, vec!["ERROR: uppercase"]);
+    }
+
+    #[test]
+    fn test_process_filter_json_structure() {
+        let input = r#"{"status": "error", "code": 500}
+{"status": "ok", "code": 200}
+{"error": "not matching"}
+Plain text with status error"#;
+
+        let mut output = Vec::new();
+        let buffer = LineBuffer::new(10);
+        // Filter for JSON objects with status: error pattern
+        let filter =
+            OutputFilter::from_args(Some(r#""status"\s*:\s*"error""#.to_string()), false).unwrap();
+        let mut processor = StreamProcessor::new(Cursor::new(input), &mut output, buffer, filter);
+
+        processor.process().unwrap();
+
+        let output_str = String::from_utf8(output).unwrap();
+        let lines: Vec<&str> = output_str.trim().split('\n').collect();
+
+        // Should only match the first JSON object
+        assert_eq!(lines, vec![r#"{"status":"error","code":500}"#]);
     }
 }

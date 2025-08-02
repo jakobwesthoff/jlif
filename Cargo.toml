@@ -7,7 +7,9 @@ edition = "2024"
 anyhow = "1.0.98"
 clap = { version = "4.5.41", features = ["derive"] }
 colored_json = "5.0.0"
+enum_dispatch = "0.3.13"
 mimalloc = "0.1.47"
+regex = "1.11.1"
 serde_json = { version = "1.0.141", features = ["preserve_order"] }
 thiserror = "2.0.12"
 

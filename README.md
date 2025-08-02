@@ -17,6 +17,9 @@ Basic usage:
 # Pretty-print JSON with colors
 tail -f app.log | jlif
 
+# HTTP response with headers and JSON
+curl -si https://randomuser.me/api/ | jlif
+
 # Compact output without colors
 cat data.jsonl | jlif -c --no-color
 

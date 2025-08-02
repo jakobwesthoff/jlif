@@ -8,15 +8,23 @@ pub struct StreamProcessor<R: Read, W: Write> {
     writer: W,
     buffer: LineBuffer,
     filter: OutputFilter,
+    compact: bool,
 }
 
 impl<R: Read, W: Write> StreamProcessor<R, W> {
-    pub fn new(reader: R, writer: W, buffer: LineBuffer, filter: OutputFilter) -> Self {
+    pub fn new(
+        reader: R,
+        writer: W,
+        buffer: LineBuffer,
+        filter: OutputFilter,
+        compact: bool,
+    ) -> Self {
         Self {
             reader: BufReader::new(reader),
             writer,
             buffer,
             filter,
+            compact,
         }
     }
 
@@ -57,8 +65,13 @@ impl<R: Read, W: Write> StreamProcessor<R, W> {
                 if self.filter.matches(&filter_input) {
                     match result {
                         BufferResult::Json(json_value) => {
-                            // Output JSON as compact single-line string
-                            writeln!(self.writer, "{}", serde_json::to_string(&json_value)?)?;
+                            // Output JSON in compact or pretty-printed format
+                            let json_string = if self.compact {
+                                serde_json::to_string(&json_value)?
+                            } else {
+                                serde_json::to_string_pretty(&json_value)?
+                            };
+                            writeln!(self.writer, "{}", json_string)?;
                         }
                         BufferResult::Text(text) => {
                             // Output text as-is
@@ -97,7 +110,8 @@ Final text line"#;
         let mut output = Vec::new();
         let buffer = LineBuffer::new(10);
         let filter = OutputFilter::None(NoFilter);
-        let mut processor = StreamProcessor::new(Cursor::new(input), &mut output, buffer, filter);
+        let mut processor =
+            StreamProcessor::new(Cursor::new(input), &mut output, buffer, filter, true);
 
         processor.process().unwrap();
 
@@ -125,7 +139,8 @@ Final text line"#;
         let mut output = Vec::new();
         let buffer = LineBuffer::new(10);
         let filter = OutputFilter::None(NoFilter);
-        let mut processor = StreamProcessor::new(Cursor::new(input), &mut output, buffer, filter);
+        let mut processor =
+            StreamProcessor::new(Cursor::new(input), &mut output, buffer, filter, true);
 
         processor.process().unwrap();
 
@@ -152,7 +167,8 @@ Final text line"#;
         let mut output = Vec::new();
         let buffer = LineBuffer::new(10);
         let filter = OutputFilter::None(NoFilter);
-        let mut processor = StreamProcessor::new(Cursor::new(input), &mut output, buffer, filter);
+        let mut processor =
+            StreamProcessor::new(Cursor::new(input), &mut output, buffer, filter, true);
 
         processor.process().unwrap();
 
@@ -177,7 +193,8 @@ Final text line"#;
         let mut output = Vec::new();
         let buffer = LineBuffer::new(10);
         let filter = OutputFilter::None(NoFilter);
-        let mut processor = StreamProcessor::new(Cursor::new(input), &mut output, buffer, filter);
+        let mut processor =
+            StreamProcessor::new(Cursor::new(input), &mut output, buffer, filter, true);
 
         processor.process().unwrap();
 
@@ -196,7 +213,8 @@ final text"#;
         let mut output = Vec::new();
         let buffer = LineBuffer::new(3); // Small buffer to trigger overflow
         let filter = OutputFilter::None(NoFilter);
-        let mut processor = StreamProcessor::new(Cursor::new(input), &mut output, buffer, filter);
+        let mut processor =
+            StreamProcessor::new(Cursor::new(input), &mut output, buffer, filter, true);
 
         processor.process().unwrap();
 
@@ -226,7 +244,8 @@ ERROR: critical system failure"#;
         let mut output = Vec::new();
         let buffer = LineBuffer::new(10);
         let filter = OutputFilter::from_args(Some("error".to_string()), false, false).unwrap();
-        let mut processor = StreamProcessor::new(Cursor::new(input), &mut output, buffer, filter);
+        let mut processor =
+            StreamProcessor::new(Cursor::new(input), &mut output, buffer, filter, true);
 
         processor.process().unwrap();
 
@@ -253,7 +272,8 @@ info: no match"#;
         let mut output = Vec::new();
         let buffer = LineBuffer::new(10);
         let filter = OutputFilter::from_args(Some("ERROR".to_string()), true, false).unwrap();
-        let mut processor = StreamProcessor::new(Cursor::new(input), &mut output, buffer, filter);
+        let mut processor =
+            StreamProcessor::new(Cursor::new(input), &mut output, buffer, filter, true);
 
         processor.process().unwrap();
 
@@ -277,7 +297,8 @@ Plain text with status error"#;
         let filter =
             OutputFilter::from_args(Some(r#""status"\s*:\s*"error""#.to_string()), false, false)
                 .unwrap();
-        let mut processor = StreamProcessor::new(Cursor::new(input), &mut output, buffer, filter);
+        let mut processor =
+            StreamProcessor::new(Cursor::new(input), &mut output, buffer, filter, true);
 
         processor.process().unwrap();
 
@@ -286,5 +307,28 @@ Plain text with status error"#;
 
         // Should only match the first JSON object
         assert_eq!(lines, vec![r#"{"status":"error","code":500}"#]);
+    }
+
+    #[test]
+    fn test_process_pretty_printed_output() {
+        let input = r#"{"name": "Deep Space Nine", "location": "Bajoran system"}
+Text line
+{"crew": {"captain": "Sisko", "science": "Dax"}}"#;
+
+        let mut output = Vec::new();
+        let buffer = LineBuffer::new(10);
+        let filter = OutputFilter::None(NoFilter);
+        let mut processor =
+            StreamProcessor::new(Cursor::new(input), &mut output, buffer, filter, false);
+
+        processor.process().unwrap();
+
+        let output_str = String::from_utf8(output).unwrap();
+
+        // Should contain pretty-printed JSON with indentation
+        assert!(output_str.contains("{\n  \"name\": \"Deep Space Nine\""));
+        assert!(output_str.contains("  \"location\": \"Bajoran system\"\n}"));
+        assert!(output_str.contains("{\n  \"crew\": {\n    \"captain\": \"Sisko\""));
+        assert!(output_str.contains("Text line"));
     }
 }

@@ -19,6 +19,10 @@ pub struct JlifArgs {
     /// Show only JSON content, suppress non-JSON pass-through
     #[arg(short, long)]
     pub json_only: bool,
+
+    /// Output JSON in compact format instead of pretty-printed
+    #[arg(short, long)]
+    pub compact: bool,
 }
 
 #[cfg(test)]

@@ -25,8 +25,9 @@ fn main() -> Result<()> {
     // Create LineBuffer with user-specified max_lines
     let line_buffer = LineBuffer::new(args.max_lines);
 
-    // Create StreamProcessor with stdin, stdout, buffer, and filter
-    let mut stream_processor = StreamProcessor::new(io::stdin(), io::stdout(), line_buffer, filter);
+    // Create StreamProcessor with stdin, stdout, buffer, filter, and compact setting
+    let mut stream_processor =
+        StreamProcessor::new(io::stdin(), io::stdout(), line_buffer, filter, args.compact);
 
     // Process the stream
     stream_processor.process()?;

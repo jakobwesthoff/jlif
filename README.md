@@ -1,10 +1,10 @@
 # jlif - JSON Line Formatter
 
-A command-line tool for processing and formatting JSON data from streaming input sources.
+A command-line tool for quickly scanning multi-object JSON logs and data streams, handling both single-line and multi-line JSON objects mixed with non-JSON content.
 
 ## Overview
 
-jlif processes continuous text streams from standard input, identifies JSON objects (both single-line and multi-line), and formats them for improved readability while passing through non-JSON content unchanged.
+jlif processes continuous text streams from standard input, intelligently detecting JSON objects that may span multiple lines (such as pretty-printed JSON in logs), and formats them for improved readability while preserving non-JSON content unchanged. This makes it ideal for scanning application logs, API responses, and data streams where JSON objects are mixed with other text content.
 
 ## Installation
 
@@ -12,18 +12,22 @@ TODO: Installation instructions
 
 ## Usage
 
-TODO: Usage examples
+Basic usage:
+```bash
+# Pretty-print JSON with colors
+tail -f app.log | jlif
 
-## Planned Features
+# Compact output without colors
+cat data.jsonl | jlif -c --no-color
 
-- Stream processing from stdin with real-time output
-- Multi-line JSON object detection and parsing
-- Pretty-printed JSON output with proper indentation
-- Configurable line buffering for multi-line JSON (`--max-lines`)
-- Pass-through for non-JSON content
-- Regex-based filtering (`--filter`)
-- Colorized JSON output
-- Filter non json on users request
+# Filter for error messages
+kubectl logs pod | jlif -f "error"
+
+# Show only JSON, hide other log lines
+docker logs container | jlif -j
+```
+
+Use `jlif --help` for all available options.
 
 ## Building
 

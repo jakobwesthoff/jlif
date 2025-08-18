@@ -27,6 +27,10 @@ pub struct JlifArgs {
     /// Disable colored output
     #[arg(long)]
     pub no_color: bool,
+
+    /// Invert filter behavior - output everything that does NOT match
+    #[arg(short = 'v', long)]
+    pub invert_match: bool,
 }
 
 #[cfg(test)]

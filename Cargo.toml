@@ -2,6 +2,12 @@
 name = "jlif"
 version = "1.1.0"
 edition = "2024"
+authors = ["Jakob Westhoff <jakob@westhoffswelt.de>"]
+license = "MPL-2.0"
+description = "A fast CLI tool for processing and formatting JSON data from streaming input sources"
+repository = "https://github.com/jakobwesthoff/jlif"
+keywords = ["json", "log", "formatter", "stream", "cli"]
+categories = ["command-line-utilities", "development-tools"]
 
 [dependencies]
 anyhow = "1.0.98"

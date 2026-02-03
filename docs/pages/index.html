@@ -54,6 +54,7 @@
     <section class="hero">
       <div class="container">
         <h1>jlif</h1>
+        <p class="hero-subtitle"><span class="hero-subtitle-highlight">J</span>SON <span class="hero-subtitle-highlight">LI</span>NE <span class="hero-subtitle-highlight">F</span>ORMATTER</p>
         <p class="hero-tagline">
           A command-line tool for scanning multi-object JSON logs and data streams, with syntax highlighting, filtering, and multi-line JSON support.
         </p>
@@ -336,6 +337,134 @@ Connection established
           <p>
             Use <code>-j</code> / <code>--json-only</code> to suppress non-JSON lines and show only formatted JSON objects.
           </p>
+
+          <!-- How Filtering Works -->
+          <h3>How Filtering Works</h3>
+          <p>
+            The filter flags (<code>-f</code>, <code>-j</code>, <code>-v</code>) can be combined, and they compose in a specific way:
+          </p>
+          <div class="docs-table">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>Flags</th>
+                  <th>Result</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>-f "error"</code></td>
+                  <td>Show lines (JSON or non-JSON) containing "error"</td>
+                </tr>
+                <tr>
+                  <td><code>-f "error" -j</code></td>
+                  <td>Show only JSON objects containing "error"</td>
+                </tr>
+                <tr>
+                  <td><code>-f "error" -v</code></td>
+                  <td>Show lines NOT containing "error"</td>
+                </tr>
+                <tr>
+                  <td><code>-j</code></td>
+                  <td>Show all JSON, hide non-JSON</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <h4>Regex Matching</h4>
+          <p>
+            The filter pattern matches against the <strong>serialized JSON string</strong>, not individual fields. This means:
+          </p>
+          <div class="code-block">
+            <pre><code class="language-bash"># This JSON object:
+{"level": "error", "message": "Connection failed"}
+
+# Matches all of these patterns:
+-f "error"           # Matches "error" in level field
+-f "Connection"      # Matches in message field
+-f "level.*error"    # Regex across the serialized string
+-f '"level"'         # Matches the literal field name with quotes</code></pre>
+          </div>
+          <p>
+            Filtering is case-insensitive by default. Use <code>-s</code> for case-sensitive matching.
+          </p>
+
+          <!-- Buffer Behavior -->
+          <h3>Buffer Behavior</h3>
+          <p>
+            jlif uses a smart buffering system to handle multi-line JSON:
+          </p>
+          <ul>
+            <li>When a line starts with <code>{</code>, <code>[</code>, or <code>"</code> but isn't valid JSON, jlif starts buffering</li>
+            <li>Lines are accumulated until they form valid JSON or the buffer limit is reached</li>
+            <li>If the buffer fills without forming valid JSON, the oldest lines are output as non-JSON and jlif tries to extract any valid JSON from the remaining content</li>
+          </ul>
+          <p>
+            Use <code>--max-lines</code> to increase the buffer for deeply nested JSON. The default of 10 lines handles most structured logs.
+          </p>
+          <div class="callout-box">
+            <h4>When to Increase --max-lines</h4>
+            <p>Increase the buffer if you're processing pretty-printed JSON with many levels of nesting, or if you see JSON objects being split across multiple outputs.</p>
+          </div>
+
+          <!-- Real-World Examples -->
+          <h3>Real-World Examples</h3>
+          <p><strong>Kubernetes pod logs:</strong></p>
+          <div class="code-block">
+            <pre><code class="language-bash"># Filter for errors in a specific pod
+kubectl logs -f my-pod | jlif -f "error|exception" -j
+
+# Show only non-error logs
+kubectl logs my-pod | jlif -f "error" -v
+
+# Follow logs from multiple pods, JSON only
+kubectl logs -l app=myapp -f | jlif -j</code></pre>
+          </div>
+          <p><strong>Docker container logs:</strong></p>
+          <div class="code-block">
+            <pre><code class="language-bash"># Filter docker-compose logs by service pattern
+docker-compose logs -f | jlif -f "api|worker"
+
+# Show only JSON from a specific container
+docker logs -f my-container 2>&1 | jlif -j
+
+# Exclude health check logs
+docker logs my-container | jlif -f "health" -v</code></pre>
+          </div>
+          <p><strong>API server logs:</strong></p>
+          <div class="code-block">
+            <pre><code class="language-bash"># Find requests with specific status codes
+tail -f /var/log/api/access.log | jlif -f '"status":5'
+
+# Track a correlation ID across services
+cat *.log | jlif -f "correlation.*abc-123"
+
+# Show only slow requests (assuming duration field)
+tail -f app.log | jlif -f '"duration":[0-9]{4,}'</code></pre>
+          </div>
+          <p><strong>Piping to other tools:</strong></p>
+          <div class="code-block">
+            <pre><code class="language-bash"># Extract specific field with jq
+cat logs.jsonl | jlif -c --no-color | jq -r '.message'
+
+# Count error types
+cat logs.jsonl | jlif -f "error" -c --no-color | jq -r '.error_type' | sort | uniq -c
+
+# Pretty-print then search with grep
+cat logs.jsonl | jlif | grep -A5 "Connection failed"</code></pre>
+          </div>
+
+          <!-- Error Handling -->
+          <h3>Error Handling</h3>
+          <p>
+            jlif handles malformed input gracefully:
+          </p>
+          <ul>
+            <li><strong>Invalid JSON</strong>: Passed through as non-JSON text (unless <code>-j</code> is used)</li>
+            <li><strong>Incomplete JSON at EOF</strong>: Buffered content is discarded if it doesn't form valid JSON</li>
+            <li><strong>Invalid regex pattern</strong>: jlif exits with an error message</li>
+            <li><strong>Binary data</strong>: May produce unexpected output; jlif expects UTF-8 text input</li>
+          </ul>
         </div>
       </div>
     </section>

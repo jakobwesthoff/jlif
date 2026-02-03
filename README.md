@@ -30,7 +30,52 @@ kubectl logs pod | jlif -f "error"
 docker logs container | jlif -j
 ```
 
-Use `jlif --help` for all available options.
+## Options
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--max-lines <N>` | Max lines to buffer for multi-line JSON | 10 |
+| `-f, --filter <PATTERN>` | Regex filter pattern | — |
+| `-s, --case-sensitive` | Case-sensitive filtering | Off |
+| `-v, --invert-match` | Invert filter (show non-matching) | Off |
+| `-j, --json-only` | Show only JSON content | Off |
+| `-c, --compact` | Compact single-line output | Off |
+| `--no-color` | Disable syntax highlighting | Off |
+
+## Filtering
+
+Filter flags can be combined:
+
+| Flags | Result |
+|-------|--------|
+| `-f "error"` | Show lines containing "error" |
+| `-f "error" -j` | Show only JSON containing "error" |
+| `-f "error" -v` | Show lines NOT containing "error" |
+
+The filter pattern matches against the serialized JSON string, not individual fields. Filtering is case-insensitive by default; use `-s` for case-sensitive matching.
+
+## Multi-line JSON
+
+jlif automatically detects and assembles multi-line JSON objects. When a line starts with `{` or `[` but isn't valid JSON, jlif buffers lines until a complete object forms or the buffer limit is reached.
+
+Use `--max-lines` to increase the buffer for deeply nested JSON.
+
+## Examples
+
+**Kubernetes logs:**
+```bash
+kubectl logs -f my-pod | jlif -f "error" -j
+```
+
+**Docker logs:**
+```bash
+docker logs -f container 2>&1 | jlif -j
+```
+
+**Pipe to jq:**
+```bash
+cat logs.jsonl | jlif -c --no-color | jq '.message'
+```
 
 ## Building
 

@@ -3,7 +3,13 @@
   /* Brand colors */
   --color-primary: #f59e0b;
   --color-primary-hover: #d97706;
-  --color-primary-subtle: #422006;
+  --color-primary-rgb: 245, 158, 11;
+  --color-primary-subtle: rgba(var(--color-primary-rgb), 0.1);
+
+  /* Warning colors - Amber palette */
+  --color-warning-rgb: 245, 158, 11;
+  --color-warning: rgb(var(--color-warning-rgb));
+  --color-warning-subtle: rgba(var(--color-warning-rgb), 0.1);
 
   /* Backgrounds */
   --color-bg: #0f0f14;

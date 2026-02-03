@@ -6,6 +6,7 @@ authors = ["Jakob Westhoff <jakob@westhoffswelt.de>"]
 license = "MPL-2.0"
 description = "A fast CLI tool for processing and formatting JSON data from streaming input sources"
 repository = "https://github.com/jakobwesthoff/jlif"
+homepage = "https://jlif.westhoffswelt.de"
 keywords = ["json", "log", "formatter", "stream", "cli"]
 categories = ["command-line-utilities", "development-tools"]
 

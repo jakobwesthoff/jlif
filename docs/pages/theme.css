@@ -7,5 +7,5 @@
 
 /* Custom h1 gradient for short title */
 .hero h1 {
-  background: linear-gradient(135deg, #fef08a 0%, #f59e0b 40%, #c2410c 100%);
+  background-image: linear-gradient(135deg, #fef08a 0%, #f59e0b 40%, #c2410c 100%);
 }

@@ -1,0 +1,56 @@
+name: jlif
+tagline: A command-line tool for scanning multi-object JSON logs and data streams, with syntax highlighting, filtering, and multi-line JSON support
+github: jakobwesthoff/jlif
+
+author:
+  name: Jakob Westhoff
+  website: https://westhoffswelt.de
+
+navbar_buttons:
+  - label: Quick Start
+    href: "#quickstart"
+    style: primary
+    icon: download
+  - label: GitHub
+    href: https://github.com/jakobwesthoff/jlif
+    style: secondary
+    icon: github
+
+sections:
+  - id: hero
+    file: sections/hero.html
+    nav: false
+
+  - id: highlights
+    file: sections/highlights.html
+    nav: false
+
+  - id: demo
+    file: sections/demo.html
+    nav: true
+    nav_label: Demo
+
+  - id: quickstart
+    file: sections/quick-start.html
+    nav: true
+    nav_label: Quick Start
+
+  - id: docs
+    source: readme
+    nav: true
+    nav_label: Documentation
+
+  - id: footer
+    file: sections/footer.html
+    nav: false
+
+imprint:
+  enabled: true
+  name: Jakob Westhoff
+  address: |
+    Am Bollwerk 6
+    58300 Wetter
+    Deutschland
+  email_encrypted: "KCUeCwRzFQIyBFs5CQggBCk/ME8dCw=="
+  phone_encrypted: "aXBMRFcEUkd2QwdjXVZq"
+  encryption_key: "OQhqs3otNc3IbaFfYFQnlaUzR/oRFUXJk3lDntfECLj="

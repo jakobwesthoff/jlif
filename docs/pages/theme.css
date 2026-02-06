@@ -1,0 +1,11 @@
+:root {
+  --color-primary: #f59e0b;
+  --color-primary-hover: #d97706;
+  --color-primary-rgb: 245, 158, 11;
+  --color-primary-subtle: rgba(var(--color-primary-rgb), 0.1);
+}
+
+/* Custom h1 gradient for short title */
+.hero h1 {
+  background: linear-gradient(135deg, #fef08a 0%, #f59e0b 40%, #c2410c 100%);
+}

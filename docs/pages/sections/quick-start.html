@@ -1,0 +1,59 @@
+<section id="quickstart" class="quickstart">
+  <div class="container">
+    <h2>Quick Start</h2>
+
+    <div class="tabs">
+      <div class="tab-buttons">
+        <button class="tab-button active" data-tab="cargo">Cargo (Recommended)</button>
+        <button class="tab-button" data-tab="binary">Binary Releases</button>
+        <button class="tab-button" data-tab="source">From Source</button>
+      </div>
+      <div class="tab-panels">
+        <div class="tab-panel active" data-tab="cargo">
+          <div class="code-block">
+            <pre><code class="language-bash">cargo install jlif</code></pre>
+          </div>
+          <div style="padding: var(--space-md) var(--space-lg); border-top: 1px solid var(--color-border);">
+            <p style="margin: 0; color: var(--color-text-muted);">
+              Available on <a href="https://crates.io/crates/jlif" style="color: var(--color-primary);">crates.io</a>
+            </p>
+          </div>
+        </div>
+        <div class="tab-panel" data-tab="binary">
+          <div style="padding: var(--space-lg); background-color: var(--color-bg-code);">
+            <p style="margin: 0 0 1rem 0;">Download pre-built binaries from GitHub Releases:</p>
+            <a href="https://github.com/jakobwesthoff/jlif/releases" class="btn btn-primary">
+              <i data-icon="download"></i>
+              View Releases
+            </a>
+          </div>
+        </div>
+        <div class="tab-panel" data-tab="source">
+          <div class="code-block">
+            <pre><code class="language-bash">git clone https://github.com/jakobwesthoff/jlif
+cd jlif
+cargo build --release</code></pre>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <h3>Basic Usage</h3>
+    <div class="code-block">
+      <pre><code class="language-bash"># Stream and format log files
+tail -f app.log | jlif
+
+# Fetch and format JSON from an API
+curl -si https://randomuser.me/api/ | jlif
+
+# Compact output for piping
+cat data.jsonl | jlif -c --no-color
+
+# Filter logs for errors
+kubectl logs pod | jlif -f "error"
+
+# Show only JSON content
+docker logs container | jlif -j</code></pre>
+    </div>
+  </div>
+</section>
